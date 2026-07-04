@@ -1,0 +1,5 @@
+Halwani FS Cloud CRM - corrected package
+
+This package intentionally has NO package-lock.json.
+It includes .npmrc pinned to the public npm registry.
+Do not restore an old package-lock.json from the previous version.

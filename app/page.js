@@ -74,27 +74,21 @@ function textCell(value) {
 }
 
 async function readExcelRows(file) {
-  const ExcelJS = (await import('exceljs')).default;
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(await file.arrayBuffer());
-  const worksheet = workbook.worksheets[0];
+  const XLSXModule = await import('xlsx');
+  const XLSX = XLSXModule.default || XLSXModule;
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  const firstSheetName = workbook.SheetNames?.[0];
+  const worksheet = firstSheetName ? workbook.Sheets[firstSheetName] : null;
   if (!worksheet) throw new Error('No worksheet found in this file.');
-
-  const headers = [];
-  worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, colNumber) => {
-    headers[colNumber] = normalizeHeader(textCell(cell.value));
-  });
-
-  const rows = [];
-  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-    if (rowNumber === 1) return;
+  const rows = XLSX.utils.sheet_to_json(worksheet, { defval: null, raw: true });
+  return rows.map((source) => {
     const item = {};
-    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      if (headers[colNumber]) item[headers[colNumber]] = cell.value;
+    Object.entries(source || {}).forEach(([key, value]) => {
+      const normalized = normalizeHeader(key);
+      if (normalized) item[normalized] = value;
     });
-    if (Object.values(item).some((value) => value !== null && value !== undefined && value !== '')) rows.push(item);
-  });
-  return rows;
+    return item;
+  }).filter((item) => Object.values(item).some((value) => value !== null && value !== undefined && value !== ''));
 }
 
 function getRowValue(row, ...keys) {

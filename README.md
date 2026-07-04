@@ -1,3 +1,28 @@
+# Halwani FS Cloud CRM, corrected deployment package
+
+## Important deployment fix
+
+The earlier package contained a `package-lock.json` generated with a private build registry. Vercel could not access that registry and `npm install` failed. This package removes that lock file, adds `.npmrc` pointing to the public npm registry, and uses the lighter `xlsx` library for Excel imports.
+
+**Do not upload any old `package-lock.json` file.**
+
+## Upload checklist
+
+At GitHub repository root, keep these folders/files directly:
+
+- `app/`
+- `lib/`
+- `public/`
+- `supabase/`
+- `package.json`
+- `.npmrc`
+- `vercel.json`
+- `.env.example`
+
+There must be **no** `package-lock.json` in the repository after this update.
+
+---
+
 # Halwani Food Service Cloud CRM
 
 This is the production cloud foundation for the Food Service visit app.
