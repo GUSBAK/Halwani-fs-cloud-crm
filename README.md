@@ -169,3 +169,8 @@ This release includes an **Accept Invitation / Set Password** page at `/accept-i
 5. The user opens the invitation email, sets their own password in the Halwani app, then lands on the normal app dashboard.
 
 The app forwards invitation links that land on the home page to `/accept-invitation` automatically, so invitations remain compatible with the Supabase dashboard's default invitation flow.
+
+
+## 2026-07-05 interface merge
+
+This release restores the approved salesperson-first visual flow while retaining the shared Supabase database, live management dashboard, GPS check-ins, collections, journey plans, records, and invitation password setup.

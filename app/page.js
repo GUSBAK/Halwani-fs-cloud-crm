@@ -15,7 +15,7 @@ const ROLE_LABELS = {
 };
 
 const EMPTY_DATA = {
-  customers: [], products: [], journeys: [], collectionTargets: [], receipts: [], visits: [], locations: [], actions: [], profiles: []
+  customers: [], products: [], journeys: [], collectionTargets: [], receipts: [], visits: [], locations: [], actions: [], profiles: [], competition: []
 };
 
 const today = () => todayIso();
@@ -106,24 +106,19 @@ function getRowValue(row, ...keys) {
   return null;
 }
 
-function AppHeader({ profile, onExport, onSignOut }) {
+function AppHeader({ onExport }) {
   return (
-    <header className="topbar">
-      <div className="brand">
+    <header className="topbar legacy-topbar">
+      <div className="brand legacy-brand">
         <img src="/assets/halwani-logo.png" alt="Halwani Bros" />
         <div className="brand-copy">
-          <h1>Halwani Food Service</h1>
-          <p>{ROLE_LABELS[profile?.role] || 'Sales Execution Platform'} · {profile?.region || 'KSA'}</p>
+          <h1><span>Halwani</span><span>Food Service</span></h1>
         </div>
       </div>
-      <div className="top-actions">
-        <button className="outline-btn" onClick={onExport}>Export</button>
-        <button className="outline-btn small" onClick={onSignOut}>Sign out</button>
-      </div>
+      <button className="outline-btn legacy-export" onClick={onExport}>Export</button>
     </header>
   );
 }
-
 function Login({ onLogin, busy, error }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -171,56 +166,103 @@ function Dashboard({ profile, data, onStart, onTab, activeVisit }) {
   const todayClosed = data.visits.filter((row) => row.status === 'closed' && datePart(row.check_in_at) === today());
   const dueActions = data.actions.filter((row) => row.status === 'open' && row.due_date && row.due_date <= today());
   const customersById = idMap(data.customers);
+  const peopleById = idMap(data.profiles);
+  const visitsById = idMap(data.visits);
   const targetTotal = sum(currentTargets, 'collection_target_sar');
   const receiptTotal = sum(currentReceipts, 'amount_sar');
+  const recentVisits = [...data.visits]
+    .filter((row) => row.status === 'closed')
+    .sort((a, b) => new Date(b.check_in_at) - new Date(a.check_in_at))
+    .slice(0, 5);
+  const competitorAlerts = [...(data.competition || [])]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 4);
 
   return (
-    <div className="page grid">
-      <section className="card">
+    <div className="page grid legacy-home">
+      <section className="card welcome-card">
         <div className="kicker">Good morning</div>
         <h2>{profile.full_name}</h2>
         <p className="muted">{ROLE_LABELS[profile.role]} · {profile.region || 'KSA'}</p>
       </section>
 
       {activeVisit ? (
-        <section className="card soft">
-          <div className="section-head"><div><span className="live-dot" /> <strong style={{ marginLeft: 8 }}>Visit in progress</strong><p className="muted">GPS location is being saved while the app is open.</p></div><button className="button" onClick={() => onTab('visit')}>Open Visit</button></div>
+        <section className="card active-visit-card">
+          <div className="section-head">
+            <div>
+              <div className="live-line"><span className="live-dot" /> Visit in progress</div>
+              <h3 style={{ marginTop: 8 }}>{customersById[activeVisit.customer_id]?.name || 'Customer'}</h3>
+              <p className="muted">Your last verified location is updating while the app stays open.</p>
+            </div>
+            <button className="button" onClick={() => onTab('visit')}>Open Visit</button>
+          </div>
         </section>
       ) : (
         <button className="hero-action" onClick={onStart}>START VISIT</button>
       )}
 
-      <section className="card soft">
-        <div className="section-head"><div><h3>Collections · {monthLabel(currentMonth)}</h3><p className="muted">Live totals from the central collection records.</p></div><button className="ghost-btn" onClick={() => onTab('plan')}>Plan</button></div>
-        <div className="grid three">
+      <section className="card collection-card">
+        <div className="section-head">
+          <div>
+            <h3>Collections · {monthLabel(currentMonth)}</h3>
+            <p className="muted">Your live target and collection progress.</p>
+          </div>
+          <button className="ghost-btn legacy-plan-btn" onClick={() => onTab('plan')}>Plan</button>
+        </div>
+        <div className="grid three collection-grid">
           <div className="item"><div className="kicker">Target</div><div className="value">{money(targetTotal)}</div></div>
           <div className="item"><div className="kicker">Collected</div><div className="value">{money(receiptTotal)}</div></div>
           <div className="item"><div className="kicker">Remaining</div><div className="value">{money(Math.max(0, targetTotal - receiptTotal))}</div></div>
         </div>
       </section>
 
-      <section className="card">
-        <div className="section-head"><div><h3>Today’s Journey</h3><p className="muted">{formatDate(today())}</p></div><span className="badge">{todayPlans.length} planned</span></div>
+      <section className="card journey-card">
+        <div className="section-head">
+          <div><h3>Today&apos;s Journey</h3><p className="muted">{formatDate(today())}</p></div>
+          <span className="badge">{todayPlans.length} stores</span>
+        </div>
         {todayPlans.length ? todayPlans.sort((a, b) => String(a.visit_time || '').localeCompare(String(b.visit_time || ''))).map((plan) => {
           const customer = customersById[plan.customer_id];
           const target = currentTargets.find((row) => row.customer_id === plan.customer_id);
           const complete = todayClosed.some((visit) => visit.customer_id === plan.customer_id);
-          return <div className="item" key={plan.id}>
-            <div className="item-row"><div><div className="item-title">{customer?.name || 'Customer'}</div><div className="item-sub">{formatTime(plan.visit_time)} · {customer?.city || plan.city || '—'} · {customer?.area || plan.area || '—'}</div></div><span className={`badge ${complete ? 'success' : ''}`}>{complete ? 'Completed' : 'Planned'}</span></div>
-            {target && <div className="item-sub" style={{ marginTop: 8 }}>Collection target: <strong style={{ color: 'var(--halwani)' }}>{money(target.collection_target_sar)}</strong></div>}
-            <div className="item-actions"><button className="secondary-btn small" onClick={() => onStart(customer, plan)}>Start Visit</button></div>
+          return <div className="journey-row" key={plan.id}>
+            <div className="journey-time">{formatTime(plan.visit_time) || '—'}</div>
+            <div className="journey-copy"><div className="item-title">{customer?.name || 'Customer'}</div><div className="item-sub">{customer?.city || plan.city || '—'} · {customer?.area || plan.area || '—'}</div>{target && <div className="journey-target">Collection target {money(target.collection_target_sar)}</div>}</div>
+            <div className="journey-status"><span className={`badge ${complete ? 'success' : 'warning'}`}>{complete ? 'Completed' : 'Planned'}</span><button className="secondary-btn small" onClick={() => onStart(customer, plan)}>Start</button></div>
           </div>;
         }) : <div className="empty">No stores are planned today. Use This Month Plan to add a free space or an approved customer visit.</div>}
       </section>
 
-      <section className="grid two">
-        <div className="card kpi"><div className="value">{todayClosed.length}</div><div className="meta">Visits completed today</div></div>
-        <div className="card kpi"><div className="value">{dueActions.length}</div><div className="meta">Due or overdue actions</div></div>
+      <section className="card competitor-card">
+        <div className="section-head"><div><h3>Competitor Alerts</h3><p className="muted">Latest reports from your permitted accounts.</p></div><button className="ghost-btn" onClick={() => onTab('records')}>Records</button></div>
+        {competitorAlerts.length ? competitorAlerts.map((alert) => {
+          const visit = visitsById[alert.visit_id]; const customer = visit ? customersById[visit.customer_id] : null;
+          return <div className="alert-row" key={alert.id}><div><div className="item-title">{alert.competitor_brand || 'Competitor update'}</div><div className="item-sub">{customer?.name || 'Customer'}{alert.promotion ? ` · ${alert.promotion}` : ''}</div></div><span className="badge warning">Alert</span></div>;
+        }) : <div className="empty">No competitor updates recorded yet.</div>}
+      </section>
+
+      <section className="card latest-card">
+        <div className="section-head"><div><h3>Latest Visits</h3><p className="muted">Live records from the shared database.</p></div><button className="ghost-btn" onClick={() => onTab('records')}>View all</button></div>
+        {recentVisits.length ? recentVisits.map((visit) => {
+          const customer = customersById[visit.customer_id]; const person = peopleById[visit.salesperson_id];
+          const seconds = visit.check_out_at ? Math.max(0, Math.round((new Date(visit.check_out_at) - new Date(visit.check_in_at)) / 1000)) : 0;
+          const receipt = data.receipts.find((row) => row.visit_id === visit.id);
+          return <div className="latest-row" key={visit.id}>
+            <div className="item-title">{customer?.name || 'Customer'}</div>
+            <div className="item-sub">{person?.full_name || 'Salesperson'} · {formatDate(datePart(visit.check_in_at))} · {seconds ? formatDuration(seconds) : 'Closed'}</div>
+            <div className="item-sub">{visit.visit_objective || 'Visit'}{visit.result ? ` · ${visit.result}` : ''}</div>
+            {receipt && <span className="collection-chip">Collected {money(receipt.amount_sar)}</span>}
+          </div>;
+        }) : <div className="empty">No completed visits in the current view yet.</div>}
+      </section>
+
+      <section className="grid two compact-kpis">
+        <div className="card kpi"><div className="value">{todayClosed.length}</div><div className="meta">Visits today</div></div>
+        <div className="card kpi"><div className="value">{dueActions.length}</div><div className="meta">Follow ups due</div></div>
       </section>
     </div>
   );
 }
-
 function StartVisit({ data, onStart, activeVisit, onOpenActive, onRegisterGps, canEditGps }) {
   const [query, setQuery] = useState('');
   const customers = data.customers.filter((customer) => `${customer.name} ${customer.customer_code} ${customer.city || ''}`.toLowerCase().includes(query.toLowerCase())).slice(0, 40);
@@ -228,25 +270,26 @@ function StartVisit({ data, onStart, activeVisit, onOpenActive, onRegisterGps, c
   const customersById = idMap(data.customers);
   if (activeVisit) {
     const customer = customersById[activeVisit.customer_id];
-    return <div className="page"><section className="card soft"><div className="section-head"><div><h2>Visit in progress</h2><p className="muted">{customer?.name || 'Customer'} · Checked in at {new Date(activeVisit.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p></div><span className="badge active"><span className="live-dot" /> Live</span></div><button className="button" onClick={onOpenActive}>Open visit form</button></section></div>;
+    return <div className="page"><section className="card active-visit-card"><div className="section-head"><div><div className="live-line"><span className="live-dot" /> Visit in progress</div><h2 style={{ marginTop: 8 }}>{customer?.name || 'Customer'}</h2><p className="muted">Checked in at {new Date(activeVisit.check_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p></div><span className="badge active">Live</span></div><button className="button" onClick={onOpenActive}>Open visit form</button></section></div>;
   }
 
-  return <div className="page grid">
-    <section className="card"><div className="section-head"><div><h2>Start Visit</h2><p className="muted">Select an account, then the app verifies your GPS location against its 20 metre customer radius.</p></div></div>
+  return <div className="page grid legacy-visit-start">
+    <section className="card">
+      <div className="section-head"><div><h2>1. Select Customer</h2><p className="muted">Search an account, then check in only when you are within its approved GPS radius.</p></div></div>
       <input className="input" placeholder="Search account, code or city" value={query} onChange={(e) => setQuery(e.target.value)} />
-      <div style={{ marginTop: 14 }}>
-        {customers.map((customer) => <div className="item" key={customer.id}><div className="item-row"><div><div className="item-title">{customer.name}</div><div className="item-sub">{customer.customer_code} · {customer.city || 'City not set'} · {customer.area || 'Area not set'}</div></div><span className={`badge ${customer.gps_lat ? 'success' : 'warning'}`}>{customer.gps_lat ? `${customer.gps_radius_m || 20}m GPS` : 'GPS missing'}</span></div>
+      <div className="account-picker">
+        {customers.map((customer) => <div className="item account-row" key={customer.id}><div className="item-row"><div><div className="item-title">{customer.name}</div><div className="item-sub">{customer.customer_code} · {customer.city || 'City not set'} · {customer.area || 'Area not set'}</div></div><span className={`badge ${customer.gps_lat ? 'success' : 'warning'}`}>{customer.gps_lat ? `${customer.gps_radius_m || 20}m GPS` : 'GPS missing'}</span></div>
           <div className="item-actions"><button className="button small" disabled={!customer.gps_lat} onClick={() => onStart(customer)}>Check In</button>{canEditGps && <button className="secondary-btn small" onClick={() => onRegisterGps(customer)}>Set Account GPS</button>}</div>
         </div>)}
       </div>
     </section>
 
-    <section className="card"><div className="section-head"><div><h3>Today’s planned accounts</h3><p className="muted">Tap a customer to begin the verified check-in.</p></div></div>
-      {todayPlans.length ? todayPlans.map((plan) => { const customer = customersById[plan.customer_id]; return customer ? <div className="item" key={plan.id}><div className="item-row"><div><div className="item-title">{customer.name}</div><div className="item-sub">{formatTime(plan.visit_time)} · {customer.city || plan.city || '—'}</div></div><button className="secondary-btn small" disabled={!customer.gps_lat} onClick={() => onStart(customer, plan)}>Check In</button></div></div> : null; }) : <div className="empty">No planned visits today.</div>}
+    <section className="card">
+      <div className="section-head"><div><h3>2. Today&apos;s Journey</h3><p className="muted">Use your planned route or select another approved account above.</p></div></div>
+      {todayPlans.length ? todayPlans.map((plan) => { const customer = customersById[plan.customer_id]; return customer ? <div className="journey-row" key={plan.id}><div className="journey-time">{formatTime(plan.visit_time) || '—'}</div><div className="journey-copy"><div className="item-title">{customer.name}</div><div className="item-sub">{customer.city || plan.city || '—'} · {customer.area || plan.area || '—'}</div></div><div className="journey-status"><button className="secondary-btn small" disabled={!customer.gps_lat} onClick={() => onStart(customer, plan)}>Check In</button></div></div> : null; }) : <div className="empty">No planned visits today.</div>}
     </section>
   </div>;
 }
-
 function VisitCapture({ activeVisit, customer, products, profile, onClose, onSaveDraft }) {
   const [form, setForm] = useState({
     contact_met: '', visit_objective: '', customer_interest: '3', result: '', notes: '', next_action: '', follow_up_date: '', expected_order_sar: '',
@@ -263,7 +306,7 @@ function VisitCapture({ activeVisit, customer, products, profile, onClose, onSav
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const toggleProduct = (id) => setForm((current) => ({ ...current, product_ids: current.product_ids.includes(id) ? current.product_ids.filter((item) => item !== id) : [...current.product_ids, id] }));
 
-  return <div className="page grid">
+  return <div className="page grid visit-flow">
     <section className="card soft"><div className="section-head"><div><span className="live-dot" /> <span style={{ marginLeft: 8, fontWeight: 900 }}>Visit in progress</span><h2 style={{ marginTop: 10 }}>{customer?.name}</h2><p className="muted">{customer?.customer_code} · {customer?.city || '—'} · GPS verified at check-in</p></div><div className="value">{formatDuration(seconds)}</div></div>
       <div className="grid three"><div className="item"><div className="kicker">Gross Sales YTD</div><strong>{money(customer?.gross_sales_ytd)}</strong></div><div className="item"><div className="kicker">Monthly Average</div><strong>{money(customer?.monthly_average_gross_sales)}</strong></div><div className="item"><div className="kicker">GPS Radius</div><strong>{customer?.gps_radius_m || 20} m</strong></div></div>
     </section>
@@ -282,9 +325,9 @@ function VisitCapture({ activeVisit, customer, products, profile, onClose, onSav
 
     <section className="card"><h3>3. Collection</h3><div className="form-grid"><div><label className="label">Collection received, SAR</label><input className="input" inputMode="decimal" value={form.collection_amount} onChange={(e) => update('collection_amount', e.target.value)} placeholder="0" /></div><div><label className="label">Payment status</label><select className="select" value={form.payment_status} onChange={(e) => update('payment_status', e.target.value)}><option value="received">Received</option><option value="partial">Partial</option><option value="promised">Promised</option><option value="rejected">Rejected</option></select></div><div className="full"><label className="label">Collection notes</label><textarea className="textarea" value={form.collection_notes} onChange={(e) => update('collection_notes', e.target.value)} placeholder="Cheque, transfer reference, promise date or issue." /></div></div></section>
 
-    <section className="card"><h3>4. Competition update</h3><div className="form-grid"><div><label className="label">Competitor brand</label><input className="input" value={form.competitor_brand} onChange={(e) => update('competitor_brand', e.target.value)} placeholder="Brand name" /></div><div><label className="label">Competitor price, SAR</label><input className="input" inputMode="decimal" value={form.competitor_price_sar} onChange={(e) => update('competitor_price_sar', e.target.value)} placeholder="0" /></div><div><label className="label">Promotion</label><input className="input" value={form.competitor_promotion} onChange={(e) => update('competitor_promotion', e.target.value)} placeholder="Discount, bundle, menu deal…" /></div><div className="full"><label className="label">Competition notes</label><textarea className="textarea" value={form.competitor_notes} onChange={(e) => update('competitor_notes', e.target.value)} placeholder="Strength, weakness, customer feedback or any relevant update." /></div></div></section>
+    <section className="card"><h3>4. Competition Update</h3><div className="form-grid"><div><label className="label">Competitor brand</label><input className="input" value={form.competitor_brand} onChange={(e) => update('competitor_brand', e.target.value)} placeholder="Brand name" /></div><div><label className="label">Competitor price, SAR</label><input className="input" inputMode="decimal" value={form.competitor_price_sar} onChange={(e) => update('competitor_price_sar', e.target.value)} placeholder="0" /></div><div><label className="label">Promotion</label><input className="input" value={form.competitor_promotion} onChange={(e) => update('competitor_promotion', e.target.value)} placeholder="Discount, bundle, menu deal…" /></div><div className="full"><label className="label">Competition notes</label><textarea className="textarea" value={form.competitor_notes} onChange={(e) => update('competitor_notes', e.target.value)} placeholder="Strength, weakness, customer feedback or any relevant update." /></div></div></section>
 
-    <section className="card"><h3>5. Action list</h3><div className="form-grid"><div><label className="label">Action type</label><select className="select" value={form.action_type} onChange={(e) => update('action_type', e.target.value)}><option>Follow up</option><option>Send quotation</option><option>Deliver sample</option><option>Chef demo</option><option>Price review</option><option>Collection follow-up</option><option>Technical support</option></select></div><div><label className="label">Due date</label><input className="input" type="date" value={form.action_due_date} onChange={(e) => update('action_due_date', e.target.value)} /></div><div className="full"><label className="label">Action details</label><textarea className="textarea" value={form.action_details} onChange={(e) => update('action_details', e.target.value)} placeholder="Clear action that should be tracked after this visit." /></div></div>
+    <section className="card"><h3>5. Action List</h3><div className="form-grid"><div><label className="label">Action type</label><select className="select" value={form.action_type} onChange={(e) => update('action_type', e.target.value)}><option>Follow up</option><option>Send quotation</option><option>Deliver sample</option><option>Chef demo</option><option>Price review</option><option>Collection follow-up</option><option>Technical support</option></select></div><div><label className="label">Due date</label><input className="input" type="date" value={form.action_due_date} onChange={(e) => update('action_due_date', e.target.value)} /></div><div className="full"><label className="label">Action details</label><textarea className="textarea" value={form.action_details} onChange={(e) => update('action_details', e.target.value)} placeholder="Clear action that should be tracked after this visit." /></div></div>
       <button className="secondary-btn" onClick={() => onSaveDraft(form)}>Save draft locally</button>
     </section>
 
@@ -318,6 +361,32 @@ function Customers({ data, profile, onAddCustomer, onRegisterGps }) {
   <section className="card">{records.map((c) => <div className="item" key={c.id}><div className="item-row"><div><div className="item-title">{c.name}</div><div className="item-sub">{c.customer_code} · {c.city || 'City not set'} · {c.area || 'Area not set'}</div></div><span className={`badge ${c.gps_lat ? 'success' : 'warning'}`}>{c.gps_lat ? `${c.gps_radius_m || 20}m GPS` : 'GPS missing'}</span></div><div className="item-sub" style={{ marginTop: 7 }}>Gross Sales YTD: <strong style={{ color: 'var(--halwani)' }}>{money(c.gross_sales_ytd)}</strong> · Monthly Avg: <strong style={{ color: 'var(--halwani)' }}>{money(c.monthly_average_gross_sales)}</strong></div><div className="item-actions">{(isManager || c.salesperson_id === profile.id) && <button className="secondary-btn small" onClick={() => onRegisterGps(c)}>Set Account GPS</button>}</div></div>)}{!records.length && <div className="empty">No customers found.</div>}</section></div>;
 }
 
+function Records({ data, profile, onExport, onSignOut }) {
+  const customersById = idMap(data.customers);
+  const peopleById = idMap(data.profiles);
+  const closedVisits = [...data.visits].filter((visit) => visit.status === 'closed').sort((a, b) => new Date(b.check_in_at) - new Date(a.check_in_at));
+  const openActions = data.actions.filter((action) => action.status === 'open').sort((a, b) => String(a.due_date || '').localeCompare(String(b.due_date || '')));
+  const recentAlerts = [...(data.competition || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
+  const visitsById = idMap(data.visits);
+
+  return <div className="page grid records-page">
+    <section className="card"><div className="section-head"><div><h2>Records</h2><p className="muted">Your shared visit history, follow ups and competitor reports.</p></div></div>
+      <div className="records-controls"><button className="button" onClick={onExport}>Export visits</button><button className="secondary-btn" onClick={onSignOut}>Sign out</button></div>
+    </section>
+
+    <section className="card"><div className="section-head"><div><h3>Latest Visits</h3><p className="muted">Records loaded from the live cloud database.</p></div><span className="badge">{closedVisits.length}</span></div>
+      {closedVisits.length ? closedVisits.map((visit) => { const customer = customersById[visit.customer_id]; const person = peopleById[visit.salesperson_id]; const receipt = data.receipts.find((row) => row.visit_id === visit.id); return <div className="latest-row" key={visit.id}><div className="item-title">{customer?.name || 'Customer'}</div><div className="item-sub">{person?.full_name || 'Salesperson'} · {formatDate(datePart(visit.check_in_at))}</div><div className="item-sub">{visit.visit_objective || 'Visit'}{visit.result ? ` · ${visit.result}` : ''}</div>{receipt && <span className="collection-chip">Collected {money(receipt.amount_sar)}</span>}</div>; }) : <div className="empty">No completed visits in the current view.</div>}
+    </section>
+
+    <section className="card"><div className="section-head"><div><h3>Open Actions</h3><p className="muted">Follow ups that still need attention.</p></div><span className="badge warning">{openActions.length} open</span></div>
+      {openActions.length ? openActions.map((action) => <div className="item" key={action.id}><div className="item-row"><div><div className="item-title">{action.action_type}</div><div className="item-sub">{action.details || 'No details added'}</div></div><span className="badge">{action.due_date ? formatDate(action.due_date) : 'No due date'}</span></div></div>) : <div className="empty">No open actions.</div>}
+    </section>
+
+    <section className="card"><div className="section-head"><div><h3>Competitor Alerts</h3><p className="muted">Latest competition updates from customer visits.</p></div></div>
+      {recentAlerts.length ? recentAlerts.map((alert) => { const visit = visitsById[alert.visit_id]; const customer = visit ? customersById[visit.customer_id] : null; return <div className="alert-row" key={alert.id}><div><div className="item-title">{alert.competitor_brand}</div><div className="item-sub">{customer?.name || 'Customer'}{alert.update_notes ? ` · ${alert.update_notes}` : ''}</div></div></div>; }) : <div className="empty">No competitor updates yet.</div>}
+    </section>
+  </div>;
+}
 function ManagerDashboard({ data, profile }) {
   const [now, setNow] = useState(new Date());
   useEffect(() => { const id = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(id); }, []);
@@ -542,6 +611,7 @@ export default function Page() {
   const refreshData = useCallback(async () => {
     if (!supabase || !session?.user) return;
     const from = monthStart(); const to = monthEnd(); const todayStart = `${today()}T00:00:00.000Z`;
+    const visitWindowStart = new Date(Date.now() - (30 * 24 * 60 * 60 * 1000)).toISOString();
     const queries = await Promise.all([
       supabase.from('profiles').select('*').eq('is_active', true).order('full_name'),
       supabase.from('customers').select('*').order('name').limit(5000),
@@ -549,11 +619,12 @@ export default function Page() {
       supabase.from('journey_plans').select('*').gte('visit_date', from).lt('visit_date', to).order('visit_date').order('visit_time'),
       supabase.from('collection_targets').select('*').eq('target_month', from),
       supabase.from('collection_receipts').select('*').gte('receipt_date', from).lt('receipt_date', to),
-      supabase.from('visits').select('*').gte('check_in_at', todayStart).order('check_in_at', { ascending: false }),
+      supabase.from('visits').select('*').gte('check_in_at', visitWindowStart).order('check_in_at', { ascending: false }),
       supabase.from('visit_locations').select('*').gte('recorded_at', todayStart).order('recorded_at', { ascending: false }).limit(1000),
-      supabase.from('actions').select('*').eq('status', 'open').order('due_date')
+      supabase.from('actions').select('*').eq('status', 'open').order('due_date'),
+      supabase.from('competition_updates').select('*').order('created_at', { ascending: false }).limit(100)
     ]);
-    const names = ['profiles','customers','products','journeys','collectionTargets','receipts','visits','locations','actions'];
+    const names = ['profiles','customers','products','journeys','collectionTargets','receipts','visits','locations','actions','competition'];
     const next = {};
     for (let index = 0; index < queries.length; index += 1) {
       const response = queries[index];
@@ -573,7 +644,7 @@ export default function Page() {
     const { data: profileRow, error } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     if (error) { setLoginError('Your user account exists but the CRM profile is not ready yet. Ask the administrator to run the schema and set your role.'); return; }
     setProfile(profileRow);
-    setTab(isManagerRole(profileRow.role) ? 'manage' : 'dashboard');
+    setTab('dashboard');
   }, [supabase]);
 
   useEffect(() => {
@@ -748,17 +819,18 @@ export default function Page() {
   const canManage = isManagerRole(profile.role);
   const canImport = isImportAdminRole(profile.role);
 
-  return <div className="shell"><div className="app-frame"><AppHeader profile={profile} onExport={exportVisits} onSignOut={signOut} />
+  return <div className={`shell ${canManage ? 'leadership-shell' : 'sales-shell'}`}><div className="app-frame"><AppHeader profile={profile} onExport={exportVisits} onSignOut={signOut} />
     {notice && <div className={`notice ${notice.type}`} style={{ marginTop: 16 }}>{notice.message}</div>}
     {busy && <div className="notice info" style={{ marginTop: 12 }}>Working with the live database…</div>}
     {tab === 'dashboard' && <Dashboard profile={profile} data={data} onStart={() => setTab('visit')} onTab={setTab} activeVisit={activeVisit} />}
     {tab === 'visit' && (activeVisit ? <VisitCapture activeVisit={activeVisit} customer={currentCustomer} products={data.products} profile={profile} onClose={closeVisit} onSaveDraft={saveDraft} /> : <StartVisit data={data} activeVisit={activeVisit} onStart={startVisit} onOpenActive={() => setTab('visit')} onRegisterGps={registerGps} canEditGps={canManage} />)}
     {tab === 'plan' && <MonthPlan data={data} profile={profile} onAddManual={() => setModal('manualPlan')} onStart={startVisit} />}
     {tab === 'customers' && <Customers data={data} profile={profile} onAddCustomer={() => setModal('customer')} onRegisterGps={registerGps} />}
+    {tab === 'records' && <Records data={data} profile={profile} onExport={exportVisits} onSignOut={signOut} />}
     {tab === 'manage' && canManage && <ManagerDashboard data={data} profile={profile} />}
     {tab === 'admin' && canImport && <ImportHub data={data} profile={profile} onRefresh={refreshData} onNotice={showNotice} />}
   </div>
-  <nav className="tabbar"><button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Home</button><button className={tab === 'visit' ? 'active' : ''} onClick={() => setTab('visit')}>Visit</button><button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>Plan</button><button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button>{canManage && <button className={tab === 'manage' ? 'active' : ''} onClick={() => setTab('manage')}>Manage</button>}{canImport && <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Admin</button>}</nav>
+  <nav className="tabbar"><button className={tab === 'dashboard' ? 'active' : ''} onClick={() => setTab('dashboard')}>Home</button><button className={tab === 'visit' ? 'active' : ''} onClick={() => setTab('visit')}>Visit</button><button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>Plan</button><button className={tab === 'customers' ? 'active' : ''} onClick={() => setTab('customers')}>Customers</button><button className={tab === 'records' ? 'active' : ''} onClick={() => setTab('records')}>Records</button>{canManage && <button className={tab === 'manage' ? 'active' : ''} onClick={() => setTab('manage')}>Manage</button>}{canImport && <button className={tab === 'admin' ? 'active' : ''} onClick={() => setTab('admin')}>Admin</button>}</nav>
   {modal === 'customer' && <NewCustomerModal profile={profile} onClose={() => setModal(null)} onCreate={createApprovedCustomer} />}
   {modal === 'manualPlan' && <ManualPlanModal customers={data.customers} profile={profile} onClose={() => setModal(null)} onCreate={createManualPlan} />}
   </div>;

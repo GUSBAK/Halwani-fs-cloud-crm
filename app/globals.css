@@ -175,3 +175,86 @@ td strong { color: var(--ink); }
 .invitation-card > p { text-align: center; }
 .invite-email { border: 1px solid #BEE5C7; background: #F3FBF5; color: var(--halwani); border-radius: 14px; padding: 11px 13px; font-weight: 850; margin: 14px 0 4px; overflow-wrap: anywhere; }
 .invite-note { font-size: 12px; line-height: 1.45; margin-top: 16px !important; }
+
+
+/* Approved sales-app visual layer. Keeps the existing cloud data model and live management features. */
+.sales-shell .app-frame { max-width: 540px; }
+.sales-shell .tabbar { max-width: 540px; }
+.legacy-topbar {
+  position: sticky;
+  top: 8px;
+  z-index: 20;
+  margin: 8px 0 0;
+  min-height: 112px;
+  padding: 18px 18px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #003E17 0%, #005C24 100%);
+}
+.legacy-topbar .legacy-brand { gap: 12px; }
+.legacy-topbar .brand img { width: 64px; height: 64px; }
+.legacy-topbar .brand h1 { white-space: normal; line-height: .96; letter-spacing: -.85px; font-size: 30px; }
+.legacy-topbar .brand h1 span { display: block; }
+.legacy-topbar .brand p { display: none; }
+.legacy-topbar .legacy-export { min-width: 90px; min-height: 58px; border-radius: 20px; padding: 10px 13px; font-size: 15px; }
+
+.legacy-home .welcome-card { padding: 28px 24px; }
+.legacy-home .welcome-card .kicker { font-size: 18px; font-weight: 700; }
+.legacy-home .welcome-card h2 { font-size: 34px; margin: 8px 0 2px; }
+.legacy-home .welcome-card .muted { font-size: 17px; }
+.legacy-home .collection-card { border-color: #A7DDB7; background: #FCFFFC; }
+.legacy-home .collection-grid .item { min-height: 124px; display: flex; flex-direction: column; justify-content: center; }
+.legacy-home .collection-grid .value { font-size: 27px; }
+.legacy-plan-btn { min-width: 78px; min-height: 58px; border-radius: 19px; font-size: 16px; }
+.journey-card .section-head, .competitor-card .section-head, .latest-card .section-head { margin-bottom: 8px; }
+.journey-row { display: grid; grid-template-columns: 58px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.journey-row:last-child { border-bottom: 0; }
+.journey-time { font-weight: 950; color: var(--halwani); font-size: 18px; }
+.journey-copy { min-width: 0; }
+.journey-copy .item-title { overflow-wrap: anywhere; }
+.journey-target { margin-top: 5px; color: var(--halwani); font-size: 12px; font-weight: 850; }
+.journey-status { display: grid; justify-items: end; gap: 7px; }
+.alert-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+.alert-row:last-child { border-bottom: 0; }
+.latest-row { border: 1px solid var(--line); background: #fff; padding: 16px; border-radius: 20px; margin-top: 12px; }
+.latest-row:first-of-type { margin-top: 0; }
+.collection-chip { display: inline-flex; margin-top: 12px; padding: 8px 11px; background: #EAF5EC; color: var(--halwani); border-radius: 999px; font-weight: 900; }
+.compact-kpis .card { min-height: 140px; }
+.live-line { color: var(--halwani); font-weight: 900; }
+.active-visit-card { border-color: #A7DDB7; background: #FCFFFC; }
+.legacy-visit-start .account-picker { margin-top: 14px; }
+.legacy-visit-start .account-row { margin-top: 10px; }
+.visit-flow .card h3 { font-size: 22px; }
+.records-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.records-page .card { margin-bottom: 0; }
+
+@media (min-width: 761px) {
+  .leadership-shell .legacy-topbar .brand h1 span { display: inline; }
+  .leadership-shell .legacy-topbar .brand h1 span + span::before { content: ' '; }
+}
+
+@media (max-width: 760px) {
+  .sales-shell .app-frame, .leadership-shell .app-frame { padding: 10px 12px 0; }
+  .legacy-topbar { top: 8px; margin: 0; min-height: 112px; padding: 18px 15px; border-radius: 28px; }
+  .legacy-topbar .brand { gap: 10px; }
+  .legacy-topbar .brand img { width: 58px; height: 58px; }
+  .legacy-topbar .brand h1 { font-size: 28px; letter-spacing: -.9px; }
+  .legacy-topbar .legacy-export { min-width: 82px; min-height: 54px; padding: 9px 10px; font-size: 14px; }
+  .legacy-home .welcome-card { padding: 24px 18px; }
+  .legacy-home .welcome-card h2 { font-size: 29px; }
+  .legacy-home .welcome-card .kicker { font-size: 16px; }
+  .legacy-home .welcome-card .muted { font-size: 16px; }
+  .legacy-home .collection-grid { grid-template-columns: 1fr 1fr; }
+  .legacy-home .collection-grid .item:last-child { grid-column: 1 / -1; }
+  .journey-row { grid-template-columns: 56px minmax(0,1fr); align-items: start; }
+  .journey-status { grid-column: 2; justify-items: start; display: flex; align-items: center; flex-wrap: wrap; }
+  .competitor-card .section-head, .latest-card .section-head { align-items: center; }
+  .records-controls { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 390px) {
+  .legacy-topbar .brand img { width: 50px; height: 50px; }
+  .legacy-topbar .brand h1 { font-size: 24px; }
+  .legacy-topbar .legacy-export { min-width: 72px; font-size: 12px; }
+  .legacy-home .collection-grid { grid-template-columns: 1fr; }
+  .legacy-home .collection-grid .item:last-child { grid-column: auto; }
+}
