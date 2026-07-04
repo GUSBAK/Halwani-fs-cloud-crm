@@ -1,176 +1,20 @@
-# Halwani FS Cloud CRM, corrected deployment package
+# Halwani FS Cloud CRM, exact approved UI edition
 
-## Important deployment fix
+This package uses the UI from `halwani-fs-visit-tracker-local-backup-templates` unchanged as the visual base, while replacing local-only data with the existing Supabase cloud database.
 
-The earlier package contained a `package-lock.json` generated with a private build registry. Vercel could not access that registry and `npm install` failed. This package removes that lock file, adds `.npmrc` pointing to the public npm registry, and uses the lighter `xlsx` library for Excel imports.
+## Deploy
+1. Replace the contents of the existing cloud GitHub repository with this package.
+2. Keep the existing Vercel environment variables `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+3. Deploy.
 
-**Do not upload any old `package-lock.json` file.**
+The root app redirects to `/legacy/index.html` where the approved interface runs. Data, login, active visits, closed visits, collections, customer updates, plans and manager view are read from Supabase.
 
-## Upload checklist
+## Invitation URL configuration
+In Supabase Auth URL Configuration add:
+- `https://YOUR-VERCEL-URL`
+- `https://YOUR-VERCEL-URL/accept-invitation`
 
-At GitHub repository root, keep these folders/files directly:
-
-- `app/`
-- `lib/`
-- `public/`
-- `supabase/`
-- `package.json`
-- `.npmrc`
-- `vercel.json`
-- `.env.example`
-
-There must be **no** `package-lock.json` in the repository after this update.
-
----
-
-# Halwani Food Service Cloud CRM
-
-This is the production cloud foundation for the Food Service visit app.
-
-It replaces device-only data with:
-
-- Secure user login
-- Central Supabase database
-- Live management dashboard
-- GPS-verified visit check-in and close-out
-- Salesperson journey plans
-- Collection targets and receipts
-- Customer master updates
-- Competitor intelligence
-- Action tracking
-- Local download of a central JSON backup
-
-## 1. Create the Supabase project
-
-1. Create a new project at Supabase.
-2. Open **SQL Editor**.
-3. Copy all content from `supabase/schema.sql` and run it once.
-4. In **Authentication → Users**, create your first email/password user.
-5. Run this in SQL Editor, changing email and employee code:
-
-```sql
-update public.profiles
-set
-  full_name = 'Ghassan Baker',
-  role = 'head_of_food_service',
-  region = 'KSA',
-  employee_code = 'GUS001'
-where email = 'your-email@halwani.com';
-```
-
-Create every salesperson in Authentication first. Then complete their matching profile row:
-
-```sql
-update public.profiles
-set
-  full_name = 'Salesperson Name',
-  employee_code = 'EMP001',
-  role = 'salesperson',
-  region = 'Jeddah',
-  manager_id = 'MANAGER_PROFILE_UUID'
-where email = 'salesperson@halwani.com';
-```
-
-Roles:
-
-- `admin`: full system access
-- `head_of_food_service`: full system access and imports
-- `national_manager`: all management data, no bulk imports
-- `regional_manager`: region management data
-- `supervisor`: region management data
-- `salesperson`: own customers, visits, collection records, plan, approved-customer entry
-
-## 2. Configure Vercel
-
-Import this repository into Vercel as a new project.
-
-Framework: **Next.js**
-
-In **Project Settings → Environment Variables**, add:
-
-```text
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR-PROJECT.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_SUPABASE_PUBLISHABLE_KEY
-```
-
-For older Supabase projects you can use this instead of the publishable key:
-
-```text
-NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
-```
-
-Redeploy after saving environment variables.
-
-## 3. First data load
-
-Sign in as Head of Food Service.
-
-Open **Admin → Admin Import Centre**.
-
-Import in this order:
-
-1. Customer database
-2. Product master
-3. Monthly journey plan
-4. Monthly collection targets
-
-Exact templates are in `public/templates/`:
-
-- `monthly_journey_plan_template.xlsx`
-- `monthly_collection_targets_template.xlsx`
-
-The app supports the exact attached template headings, including `Customder Code`, `customerName`, and `dueDate`.
-
-## 4. GPS rules
-
-- A visit can start only when the device is within the customer GPS radius. Default: **20 metres**.
-- A visit can close only within the same radius.
-- The app records a GPS point at check-in, while an active visit is open, and at close-out.
-- The manager dashboard shows the last verified location only for active visits.
-
-## 5. Daily management view
-
-The Management Dashboard shows:
-
-- Active visits now
-- Planned versus completed visits today
-- Journey completion by salesperson
-- Last verified location for active visits, opening in Google Maps
-- Monthly collection target and collected value
-- Open actions and short-visit flags
-
-## Development
-
-```bash
-npm install
-cp .env.example .env.local
-npm run dev
-```
-
-## Security model
-
-- Supabase Row Level Security controls who can view and change data.
-- Salespeople see their own assigned data.
-- Regional managers and supervisors see their region.
-- National, Head of Food Service, and Admin roles see the full operation.
-- Only Head of Food Service and Admin roles can run shared imports and export a central backup.
-
-
-## Invitation and password setup
-
-This release includes an **Accept Invitation / Set Password** page at `/accept-invitation`.
-
-1. In Supabase, open **Authentication → URL Configuration**.
-2. Keep **Site URL** set to your live Vercel domain, for example `https://your-app.vercel.app`.
-3. Add both of these to **Redirect URLs**:
-   - `https://your-app.vercel.app`
-   - `https://your-app.vercel.app/accept-invitation`
-4. Create users with **Authentication → Users → Invite User**. Do not use a self-registration link.
-5. The user opens the invitation email, sets their own password in the Halwani app, then lands on the normal app dashboard.
-
-The app forwards invitation links that land on the home page to `/accept-invitation` automatically, so invitations remain compatible with the Supabase dashboard's default invitation flow.
-
-
-## 2026-07-05 interface merge
-
-This release restores the approved salesperson-first visual flow while retaining the shared Supabase database, live management dashboard, GPS check-ins, collections, journey plans, records, and invitation password setup.
+## Notes
+- The original visual structure, labels, card hierarchy and mobile layout are retained from the approved local-backup package.
+- Managers see an additional Manage tab after login.
+- Customer import and journey/collection template imports use the shared database for Head of Food Service roles.
