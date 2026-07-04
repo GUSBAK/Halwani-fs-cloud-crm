@@ -166,3 +166,12 @@ td strong { color: var(--ink); }
   .outline-btn { font-size: 12px; min-width: 75px; }
   .grid.two, .grid.three, .grid.four { grid-template-columns: 1fr; }
 }
+
+
+/* Invitation acceptance and password setup */
+.invitation-card { text-align: left; }
+.invitation-card > .login-logo,
+.invitation-card > h1,
+.invitation-card > p { text-align: center; }
+.invite-email { border: 1px solid #BEE5C7; background: #F3FBF5; color: var(--halwani); border-radius: 14px; padding: 11px 13px; font-weight: 850; margin: 14px 0 4px; overflow-wrap: anywhere; }
+.invite-note { font-size: 12px; line-height: 1.45; margin-top: 16px !important; }

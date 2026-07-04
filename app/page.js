@@ -73,6 +73,13 @@ function textCell(value) {
   return String(value).trim();
 }
 
+function isInvitationHash() {
+  if (typeof window === 'undefined') return false;
+  const query = new URLSearchParams(window.location.search || '');
+  const hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+  return (hash.get('type') || query.get('type')) === 'invite';
+}
+
 async function readExcelRows(file) {
   const XLSXModule = await import('xlsx');
   const XLSX = XLSXModule.default || XLSXModule;
@@ -134,7 +141,7 @@ function Login({ onLogin, busy, error }) {
         <button className="button" style={{ width: '100%', marginTop: 18, minHeight: 54 }} disabled={busy || !email || !password} onClick={() => onLogin(email, password)}>
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
-        <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>Accounts are created by the Food Service administrator in Supabase.</p>
+        <p className="muted" style={{ fontSize: 12, marginTop: 16 }}>Accounts are created by the Food Service administrator. New users set their password from the invitation email.</p>
       </div>
     </div>
   );
@@ -570,6 +577,11 @@ export default function Page() {
   }, [supabase]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined' && isInvitationHash()) {
+      const invitePath = `/accept-invitation${window.location.search || ''}${window.location.hash || ''}`;
+      window.location.replace(invitePath);
+      return undefined;
+    }
     if (!supabase) { setLoading(false); return undefined; }
     let mounted = true;
     const boot = async () => {

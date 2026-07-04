@@ -154,3 +154,18 @@ npm run dev
 - Regional managers and supervisors see their region.
 - National, Head of Food Service, and Admin roles see the full operation.
 - Only Head of Food Service and Admin roles can run shared imports and export a central backup.
+
+
+## Invitation and password setup
+
+This release includes an **Accept Invitation / Set Password** page at `/accept-invitation`.
+
+1. In Supabase, open **Authentication → URL Configuration**.
+2. Keep **Site URL** set to your live Vercel domain, for example `https://your-app.vercel.app`.
+3. Add both of these to **Redirect URLs**:
+   - `https://your-app.vercel.app`
+   - `https://your-app.vercel.app/accept-invitation`
+4. Create users with **Authentication → Users → Invite User**. Do not use a self-registration link.
+5. The user opens the invitation email, sets their own password in the Halwani app, then lands on the normal app dashboard.
+
+The app forwards invitation links that land on the home page to `/accept-invitation` automatically, so invitations remain compatible with the Supabase dashboard's default invitation flow.
