@@ -252,21 +252,43 @@ function dashboard(){
     <div class="meta">${esc(currentUser?.role||'Salesman')}${currentUser?.branch?' · '+esc(currentUser.branch):''}</div>
   </section>
   <button class="start-hero" onclick="route('visit')">START VISIT</button>
-  <section class="card collection-summary"><div class="section-head"><h3>Collections · ${monthText(activePlanMonth)}</h3><button onclick="route('plan')">Plan</button></div>
+  <section class="card collection-summary"><div class="section-head"><h3>Collections · ${monthText(activePlanMonth)}</h3><button class="primary compact-action" onclick="route('plan')">Plan</button></div>
     <div class="summary-grid"><div><span>Target</span><b>${money(collections.target)}</b></div><div><span>Collected</span><b>${money(collections.collected)}</b></div><div><span>Remaining</span><b>${money(collections.remaining)}</b></div></div>
   </section>
   <section class="card"><div class="section-head"><h3>Today's Journey</h3><span class="pill">${today()}</span></div>
     ${journey.length?journey.map(journeyItemHtml).join(''):`<div class="plan-empty">No stores planned today. Use This Month Plan to add a free space or an approved customer visit.</div>`}
   </section>
   <section class="home-kpis">
-    <div class="home-kpi"><b>${fmt.format(todayVisits)}</b><span>Visits Today</span></div>
-    <div class="home-kpi"><b>${fmt.format(followUps)}</b><span>Follow Ups</span></div>
-    <div class="home-kpi"><b>${fmt.format(openActions)}</b><span>Open Actions</span></div>
-    <div class="home-kpi"><b>${money(pipe)}</b><span>Pipeline</span></div>
+    <button class="home-kpi kpi-button" onclick="route('metric','todayVisits')"><b>${fmt.format(todayVisits)}</b><span>Visits Today</span><small>View list</small></button>
+    <button class="home-kpi kpi-button" onclick="route('metric','followUps')"><b>${fmt.format(followUps)}</b><span>Follow Ups</span><small>View list</small></button>
+    <button class="home-kpi kpi-button" onclick="route('metric','openActions')"><b>${fmt.format(openActions)}</b><span>Open Actions</span><small>View list</small></button>
+    <button class="home-kpi kpi-button" onclick="route('metric','pipeline')"><b>${money(pipe)}</b><span>Pipeline</span><small>View list</small></button>
   </section>
-  <section class="actions" style="margin-bottom:16px"><button class="primary" onclick="route('plan')">This Month Plan</button><button onclick="route('newCustomer')">Add Approved Customer</button></section>
+  <section class="actions dashboard-actions" style="margin-bottom:16px"><button class="primary" onclick="route('plan')">This Month Plan</button><button class="primary" onclick="route('newCustomer')">Add Approved Customer</button></section>
   <section class="card"><h3>Competitor Alerts</h3>${alerts.length?alerts.map(v=>`<div class="mini-item"><b>${esc(v.competitor||'Competitor update')}</b><div class="meta">${esc(v.customerName)} · ${esc(v.competitorNews||'')}</div></div>`).join(''):'<p class="muted">No competitor updates yet.</p>'}</section>
   <section class="card"><h3>Latest Visits</h3>${latest.length?latest.map(v=>`<div class="visit-card"><b>${esc(v.customerName||v.customer)}</b><div class="meta">${esc(v.salesman||'Salesman')} · ${(v.date||'').slice(0,10)} · ${esc(v.visitDurationMinutes||'')} min</div><div class="meta">${esc(v.objective)} · ${esc(v.result)}</div>${toNum(v.collectionReceived)>0?`<span class="pill">Collected ${money(v.collectionReceived)}</span>`:''}</div>`).join(''):'<p class="muted">No visits recorded yet.</p>'}</section>`);
+}
+
+
+function metricList(type){
+  const scope = row => !isSalesman() || normalize(row.salesman) === normalize(currentUser?.name);
+  const configs = {
+    todayVisits: { title:'Visits Today', subtitle:'All visits checked in today.', rows:() => visits.filter(v=>String(v.date||'').slice(0,10)===today() && scope(v)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))) },
+    followUps: { title:'Follow Ups', subtitle:'Visits with a scheduled follow-up.', rows:() => visits.filter(v=>v.followUp && scope(v)).sort((a,b)=>String(a.followUp||'').localeCompare(String(b.followUp||''))) },
+    pipeline: { title:'Pipeline', subtitle:'Visits with expected order value.', rows:() => visits.filter(v=>toNum(v.expected)>0 && scope(v)).sort((a,b)=>toNum(b.expected)-toNum(a.expected)) },
+    openActions: { title:'Open Actions', subtitle:'Actions still awaiting completion.', rows:() => visits.filter(scope).flatMap(v=>(v.actions||[]).filter(a=>String(a.status||'').toLowerCase()!=='done').map(a=>({...a, visit:v}))).sort((a,b)=>String(a.due||'9999-12-31').localeCompare(String(b.due||'9999-12-31'))) }
+  };
+  const config=configs[type]||configs.todayVisits;
+  setTitle(config.title);
+  if(type==='openActions'){
+    const actions=config.rows();
+    screen(`<section class="card metric-header"><button class="back-link" onclick="route('dashboard')">‹ Home</button><h3>${config.title}</h3><p class="muted">${config.subtitle}</p></section>
+      <section class="card metric-list">${actions.length?actions.map(a=>`<article class="metric-row"><b>${esc(a.type||'Action')}</b><div class="meta">${esc(a.visit.customerName||'Customer')} · ${esc(a.visit.salesman||'Salesman')}</div><div class="meta">Due: ${esc(a.due||'No due date')} · ${esc(a.owner||'')}</div>${a.details?`<div class="meta">${esc(a.details)}</div>`:''}<span class="metric-badge">Open</span></article>`).join(''):'<p class="muted">No open actions.</p>'}</section>`);
+    return;
+  }
+  const rows=config.rows();
+  screen(`<section class="card metric-header"><button class="back-link" onclick="route('dashboard')">‹ Home</button><h3>${config.title}</h3><p class="muted">${config.subtitle}</p></section>
+    <section class="card metric-list">${rows.length?rows.map(v=>`<article class="metric-row" onclick="route('visit','${js(v.customerCode||'')}')"><b>${esc(v.customerName||'Customer')}</b><div class="meta">${esc(v.salesman||'Salesman')} · ${(v.date||'').slice(0,10)}</div>${type==='followUps'?`<div class="meta">Follow up: ${esc(v.followUp||'')}</div>`:''}${type==='pipeline'?`<div class="metric-value">${money(v.expected)}</div>`:''}<div class="meta">${esc(v.objective||'Visit')} · ${esc(v.result||'Open')}</div></article>`).join(''):'<p class="muted">No records found.</p>'}</section>`);
 }
 
 function getCustomerGPS(c){
@@ -490,7 +512,7 @@ function saveManualSlot(){
 
 function customers(){
   setTitle('Customers');
-  screen(`<section class="top-actions"><button class="primary" onclick="route('newCustomer')">+ Add Approved Customer</button><button onclick="route('plan')">Journey Plan</button></section>
+  screen(`<section class="top-actions"><button class="primary" onclick="route('newCustomer')">+ Add Approved Customer</button><button class="primary" onclick="route('plan')">Journey Plan</button></section>
   <section class="search-wrap sticky"><input id="customerSearch" placeholder="Search customer, code, branch"><select id="branchFilter"><option value="">All branches</option>${(DATA.branches||[]).map(b=>`<option>${esc(b)}</option>`).join('')}</select></section><section id="customerList"></section>`);
   const render=()=>{ const q=$('#customerSearch').value.toLowerCase(),b=$('#branchFilter').value; const arr=allCustomers().filter(c=>(!b||c.branch===b)&&(!q||[c.name,c.code,c.branch,c.sector,c.city,c.area].join(' ').toLowerCase().includes(q))).slice(0,100); $('#customerList').innerHTML=arr.map(c=>`<article class="row-card" onclick="customerDetail('${js(c.code)}')"><div class="row-title">${esc(c.name)}</div><div class="meta">${esc(c.code)} · ${esc(c.branch||'')} · ${esc(c.sector||'')}</div><div class="amount">${money(c.monthlyAvgGrossSales)}</div><div class="tagline"><span class="tag">Gross YTD ${money(c.grossSalesYTD)}</span><span class="tag">Orders YTD ${fmt.format(c.ordersYTD||0)}</span>${c.source==='Manual approved entry'?'<span class="tag">Approved entry</span>':''}</div></article>`).join('')||'<div class="card">No customers found.</div>'; };
   $('#customerSearch').oninput=render;$('#branchFilter').onchange=render;render();
@@ -679,9 +701,9 @@ function exportCollectionsCSV(){ const receipts=isSalesman()?collectionReceipts.
 function route(s,arg){
   if(!requireLogin()){login();return;}
   $('.bottom-nav').style.display='grid';$('#exportBtn').style.display='inline-flex';navActive(s);
-  const routes={dashboard,visit,plan,customers,reports,lists,newCustomer,manualSlot,importHub};
+  const routes={dashboard,visit,plan,customers,reports,lists,newCustomer,manualSlot,importHub,metric:metricList};
   (routes[s]||dashboard)(arg);
 }
 $$('.bottom-nav button').forEach(b=>b.onclick=()=>route(b.dataset.screen));
-$('#exportBtn').onclick=exportVisitsCSV;
+$('#exportBtn').onclick=()=>logout();
 if(currentUser){route('dashboard');}else{login();}

@@ -21,3 +21,6 @@ In Supabase Auth URL Configuration add:
 
 ## Deployment fix, 5 July 2026
 This release pins Node 22 and matching React / React DOM versions. It also tells Vercel to install with `--legacy-peer-deps` to avoid the NPM peer-dependency resolution issue. Do not add a package-lock.json from another environment.
+
+
+Release cloud-ui-actions-20260706: Sign out control, expanded brand header, all main tabs in Halwani green, solid green action cards, and interactive home KPI lists.

@@ -1,1 +1,1 @@
-approved-ui-cloud-install-fix-2026-07-05
+cloud-ui-actions-20260706
