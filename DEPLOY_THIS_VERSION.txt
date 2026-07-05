@@ -1,1 +1,1 @@
-legacy-approved-ui-cloud-20260705
+approved-ui-cloud-install-fix-2026-07-05

@@ -18,3 +18,6 @@ In Supabase Auth URL Configuration add:
 - The original visual structure, labels, card hierarchy and mobile layout are retained from the approved local-backup package.
 - Managers see an additional Manage tab after login.
 - Customer import and journey/collection template imports use the shared database for Head of Food Service roles.
+
+## Deployment fix, 5 July 2026
+This release pins Node 22 and matching React / React DOM versions. It also tells Vercel to install with `--legacy-peer-deps` to avoid the NPM peer-dependency resolution issue. Do not add a package-lock.json from another environment.
